@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+
+# Archives
+*.tar.gz
+
+# Server uploads (if dynamic)
+server/public/uploads
+
+# Replit / local editor junk
+.local/
+.replit

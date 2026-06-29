@@ -1,0 +1,87 @@
+Fitwell ERP is a web-based application designed to help small manufacturing businesses manage their core operations. It provides a central system to track products, suppliers/customers (parties), production records, sales, and inventory. The goal is to digitize and streamline key business processes, replacing manual spreadsheets and providing a clear, real-time overview of the business.
+1.	Product Master: Manage a central catalog of all products, including their name, weight, raw material type, and material cost. This serves as the single source of truth for product information.
+2.	Party Master: Maintain a directory of all business contacts, including customers and suppliers. Store their name, address, contact details, and GST number.
+3.	Production Records: Log daily manufacturing output. Record the date, the product made, and the quantity produced in kilograms. The system automatically calculates the number of pieces based on the product's master weight.
+4.	Sales Management: Create and manage sales orders. Link orders to a party, record the date, and add multiple products with their quantities. Track the order status (Pending, Partial, Invoiced, Cancelled).
+5.	Inventory Control: Get a real-time view of available stock (in pieces) for each product. Stock levels are automatically updated based on production records and fulfilled sales orders. A manual stock adjustment feature allows for correcting discrepancies.
+6.	Production Planning: A utility to help plan production runs. Users can input a list of products and desired quantities (in pieces) to calculate the total raw material required for the production plan.
+7.	Reporting: Generate reports on product performance within a selected date range, showing total pieces manufactured vs. sold, and total raw material consumed.
+This blueprint outlines the technical stack and data structure.
+1. Technology Stack:
+•	Framework: Next.js with the App Router
+•	Language: TypeScript
+•	UI Library: React with ShadCN UI components
+•	Styling: Tailwind CSS
+•	Database: Google Firestore (NoSQL)
+•	Hosting: Firebase App Hosting
+2. Database Schema (Firestore):
+This defines the structure of the data stored in Firestore.
+•	products Collection: Stores individual product documents.
+o	Path: /products/{productId}
+o	Schema:
+	name: (string) e.g., "Cotter Pin 5mm"
+	weightGrams: (number) e.g., 10
+	rawMaterialType: (string) e.g., "Mild Steel"
+	rawMaterialPricePerKg: (number) e.g., 55
+•	parties Collection: Stores customer and supplier documents.
+o	Path: /parties/{partyId}
+o	Schema:
+	name: (string) e.g., "ABC Hardware"
+	address: (string)
+	pinCode: (string)
+	phoneNumber: (string)
+	gstNumber: (string, optional)
+•	production Collection: Stores records of items manufactured.
+o	Path: /production/{productionRecordId}
+o	Schema:
+	date: (string, ISO format)
+	productId: (string, reference to a document in products)
+	quantityKg: (number)
+	pieces: (number, calculated automatically)
+•	sales Collection: Stores the main sales order documents.
+o	Path: /sales/{salesOrderId}
+o	Schema:
+	orderNumber: (string, unique)
+	partyId: (string, reference to a document in parties)
+	date: (string, ISO format)
+	status: (string: "pending", "partial_invoice", "fully_invoiced", "cancelled")
+	itemCount: (number)
+o	items Subcollection: Each sales order has a subcollection of items.
+	Path: /sales/{salesOrderId}/items/{itemId}
+	Schema:
+	productId: (string, reference to a document in products)
+	quantity: (number, pieces ordered)
+	fulfilled: (number, pieces shipped/invoiced)
+•	stockAdjustments Collection: Stores manual changes to inventory.
+o	Path: /stockAdjustments/{adjustmentId}
+o	Schema:
+	date: (string, ISO format)
+	productId: (string, reference to a document in products)
+	quantity: (number, can be positive or negative)
+	reason: (string)
+This describes how a user interacts with the app and how data flows through the system.
+1. Onboarding & Setup:
+•	User navigates to the Products page -> Adds new products to the products collection.
+•	User navigates to the Parties page -> Adds new customers/suppliers to the parties collection.
+2. Daily Production Flow:
+•	User goes to the Production page -> Clicks "Add Record".
+•	A form appears. User selects a Product (from products collection), enters Quantity in KG, and sets the Date.
+•	On save, the system calculates the Number of Pieces (quantityKg * 1000 / product.weightGrams).
+•	A new document is created in the production collection.
+•	The Inventory page automatically reflects this increase in stock for the corresponding product.
+3. Sales & Fulfillment Flow:
+•	User goes to the Sales page -> Clicks "Create Sale Order".
+•	A form appears. User selects a Party (from parties), adds one or more Products (from products), and enters the Quantity (in pieces) for each.
+•	On save, a new document is created in the sales collection with status: 'pending', and each line item is created as a separate document in the items subcollection.
+•	Later, the user finds the order and clicks "Fulfill".
+•	A dialog appears showing the ordered items. User enters the quantity being fulfilled for each item.
+•	On submit, the fulfilled field for each document in the items subcollection is updated. The main order's status is updated to "partial_invoice" or "fully_invoiced".
+•	The Inventory page automatically deducts the fulfilled pieces from the available stock.
+4. Inventory Check Flow:
+•	User navigates to the Inventory page.
+•	The system calculates the current stock for each product by:
+o	Summing all pieces from the production collection.
+o	Subtracting the sum of all fulfilled quantities from all sales/{orderId}/items subcollections.
+o	Adding/subtracting the quantity from all stockAdjustments collection.
+•	The final calculated stock is displayed for each product.
+
