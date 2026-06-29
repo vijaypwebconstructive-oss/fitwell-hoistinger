@@ -53,7 +53,7 @@ export interface IStorage {
   createProductionRecord(production: InsertProduction): Promise<Production>;
   updateProductionRecord(
     id: number,
-    production: Partial<InsertProduction>
+    production: Partial<InsertProduction>,
   ): Promise<Production>;
   deleteProductionRecord(id: number): Promise<void>;
 
@@ -62,12 +62,12 @@ export interface IStorage {
   getSalesOrder(id: number): Promise<SalesOrderWithItems | undefined>;
   createSalesOrder(
     salesOrder: InsertSalesOrder,
-    items: InsertSalesOrderItem[]
+    items: InsertSalesOrderItem[],
   ): Promise<SalesOrder>;
   updateSalesOrderStatus(id: number, status: string): Promise<SalesOrder>;
   fulfillSalesOrderItems(
     orderId: number,
-    fulfillments: { itemId: number; quantity: number }[]
+    fulfillments: { itemId: number; quantity: number }[],
   ): Promise<void>;
   deleteSalesOrder(id: number): Promise<void>;
   cancelInvoice(id: number): Promise<SalesOrder>;
@@ -75,7 +75,7 @@ export interface IStorage {
   // Stock Adjustments
   getStockAdjustments(): Promise<StockAdjustment[]>;
   createStockAdjustment(
-    adjustment: InsertStockAdjustment
+    adjustment: InsertStockAdjustment,
   ): Promise<StockAdjustment>;
 
   // Inventory
@@ -133,7 +133,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateProduct(
     id: number,
-    product: Partial<InsertProduct>
+    product: Partial<InsertProduct>,
   ): Promise<Product> {
     const [updatedProduct] = await db
       .update(products)
@@ -167,7 +167,7 @@ export class DatabaseStorage implements IStorage {
 
     if (totalRelated > 0) {
       throw new Error(
-        `Cannot delete product. It has ${totalRelated} related records (production, sales, or stock adjustments). Please remove those records first.`
+        `Cannot delete product. It has ${totalRelated} related records (production, sales, or stock adjustments). Please remove those records first.`,
       );
     }
 
@@ -208,7 +208,7 @@ export class DatabaseStorage implements IStorage {
 
     if (totalRelated > 0) {
       throw new Error(
-        `Cannot delete party. It has ${totalRelated} related sales orders. Please remove those orders first.`
+        `Cannot delete party. It has ${totalRelated} related sales orders. Please remove those orders first.`,
       );
     }
 
@@ -225,12 +225,12 @@ export class DatabaseStorage implements IStorage {
         rows.map((row) => ({
           ...row.production,
           product: row.products ?? null,
-        }))
+        })),
       );
   }
 
   async getProductionRecord(
-    id: number
+    id: number,
   ): Promise<ProductionWithProduct | undefined> {
     const rows = await db
       .select()
@@ -248,7 +248,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProductionRecord(
-    productionData: InsertProduction
+    productionData: InsertProduction,
   ): Promise<Production> {
     // Get product to calculate pieces
     const [product] = await db
@@ -258,10 +258,10 @@ export class DatabaseStorage implements IStorage {
     if (!product) throw new Error("Product not found");
 
     // Use override weight if provided, otherwise use product master weight
-    const weightGrams = productionData.weightGramsOverride || product.weightGrams;
+    const weightGrams =
+      productionData.weightGramsOverride || product.weightGrams;
     const pieces = Math.floor(
-      (parseFloat(productionData.quantityKg) * 1000) /
-        parseFloat(weightGrams)
+      (parseFloat(productionData.quantityKg) * 1000) / parseFloat(weightGrams),
     );
 
     const [newProduction] = await db
@@ -277,23 +277,28 @@ export class DatabaseStorage implements IStorage {
 
   async updateProductionRecord(
     id: number,
-    productionData: Partial<InsertProduction>
+    productionData: Partial<InsertProduction>,
   ): Promise<Production> {
     let updateData: Partial<InsertProduction> & { pieces?: number } = {
       ...productionData,
     };
 
     // Recalculate pieces if quantity, product, or weight override changed
-    if (productionData.quantityKg || productionData.productId || productionData.weightGramsOverride !== undefined) {
+    if (
+      productionData.quantityKg ||
+      productionData.productId ||
+      productionData.weightGramsOverride !== undefined
+    ) {
       const [existingRecord] = await db
         .select()
         .from(production)
         .where(eq(production.id, id));
       const productId = productionData.productId || existingRecord.productId;
       const quantityKg = productionData.quantityKg || existingRecord.quantityKg;
-      const weightGramsOverride = productionData.weightGramsOverride !== undefined 
-        ? productionData.weightGramsOverride 
-        : existingRecord.weightGramsOverride;
+      const weightGramsOverride =
+        productionData.weightGramsOverride !== undefined
+          ? productionData.weightGramsOverride
+          : existingRecord.weightGramsOverride;
 
       const [product] = await db
         .select()
@@ -303,7 +308,7 @@ export class DatabaseStorage implements IStorage {
         // Use override weight if provided, otherwise use product master weight
         const weightGrams = weightGramsOverride || product.weightGrams;
         const pieces = Math.floor(
-          (parseFloat(quantityKg) * 1000) / parseFloat(weightGrams)
+          (parseFloat(quantityKg) * 1000) / parseFloat(weightGrams),
         );
         updateData = { ...updateData, pieces };
       }
@@ -332,7 +337,7 @@ export class DatabaseStorage implements IStorage {
         rows.map((row) => ({
           ...row.sales_orders,
           party: row.parties ?? null,
-        }))
+        })),
       );
   }
 
@@ -364,7 +369,7 @@ export class DatabaseStorage implements IStorage {
 
   async createSalesOrder(
     salesOrderData: InsertSalesOrder,
-    items: InsertSalesOrderItem[]
+    items: InsertSalesOrderItem[],
   ): Promise<SalesOrder> {
     const [newOrder] = await db
       .insert(salesOrders)
@@ -378,7 +383,7 @@ export class DatabaseStorage implements IStorage {
       items.map((item) => ({
         ...item,
         salesOrderId: newOrder.id,
-      }))
+      })),
     );
 
     return newOrder;
@@ -386,7 +391,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateSalesOrderStatus(
     id: number,
-    status: "pending" | "partial_invoice" | "fully_invoiced" | "cancelled"
+    status: "pending" | "partial_invoice" | "fully_invoiced" | "cancelled",
   ): Promise<SalesOrder> {
     const [updatedOrder] = await db
       .update(salesOrders)
@@ -399,7 +404,7 @@ export class DatabaseStorage implements IStorage {
 
   async fulfillSalesOrderItems(
     orderId: number,
-    fulfillments: { itemId: number; quantity: number }[]
+    fulfillments: { itemId: number; quantity: number }[],
   ): Promise<void> {
     for (const fulfillment of fulfillments) {
       // Get current order item details
@@ -416,14 +421,14 @@ export class DatabaseStorage implements IStorage {
       const remainingToFulfill = orderItem.quantity - orderItem.fulfilled;
       if (fulfillment.quantity > remainingToFulfill) {
         throw new Error(
-          `Cannot fulfill ${fulfillment.quantity} pieces. Only ${remainingToFulfill} pieces remaining to fulfill.`
+          `Cannot fulfill ${fulfillment.quantity} pieces. Only ${remainingToFulfill} pieces remaining to fulfill.`,
         );
       }
 
       // Get current inventory for this product
       const inventory = await this.getInventory();
       const productInventory = inventory.find(
-        (item) => item.id === orderItem.productId
+        (item) => item.id === orderItem.productId,
       );
 
       if (
@@ -432,7 +437,7 @@ export class DatabaseStorage implements IStorage {
       ) {
         const availableStock = productInventory?.currentStock || 0;
         throw new Error(
-          `Insufficient stock. Available: ${availableStock} pieces, requested: ${fulfillment.quantity} pieces.`
+          `Insufficient stock. Available: ${availableStock} pieces, requested: ${fulfillment.quantity} pieces.`,
         );
       }
 
@@ -490,7 +495,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createStockAdjustment(
-    adjustment: InsertStockAdjustment
+    adjustment: InsertStockAdjustment,
   ): Promise<StockAdjustment> {
     const [newAdjustment] = await db
       .insert(stockAdjustments)
@@ -500,51 +505,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInventory(): Promise<InventoryItem[]> {
-    const productsData = await db.select().from(products);
+    const [productsData, productionTotals, salesTotals, adjustmentTotals] =
+      await Promise.all([
+        db.select().from(products),
 
-    const inventory: InventoryItem[] = [];
+        db
+          .select({
+            productId: production.productId,
+            total: sql<number>`COALESCE(SUM(${production.pieces}),0)`,
+          })
+          .from(production)
+          .groupBy(production.productId),
 
-    for (const product of productsData) {
-      // Get total production
-      const productionResult = await db
-        .select({ total: sql<number>`COALESCE(SUM(${production.pieces}), 0)` })
-        .from(production)
-        .where(eq(production.productId, product.id));
+        db
+          .select({
+            productId: salesOrderItems.productId,
+            total: sql<number>`COALESCE(SUM(${salesOrderItems.fulfilled}),0)`,
+          })
+          .from(salesOrderItems)
+          .groupBy(salesOrderItems.productId),
 
-      const totalProduced = Number(productionResult[0]?.total || 0);
+        db
+          .select({
+            productId: stockAdjustments.productId,
+            total: sql<number>`COALESCE(SUM(${stockAdjustments.quantity}),0)`,
+          })
+          .from(stockAdjustments)
+          .groupBy(stockAdjustments.productId),
+      ]);
 
-      // Get total sold (fulfilled)
-      const salesResult = await db
-        .select({
-          total: sql<number>`COALESCE(SUM(${salesOrderItems.fulfilled}), 0)`,
-        })
-        .from(salesOrderItems)
-        .where(eq(salesOrderItems.productId, product.id));
+    const productionMap = new Map(
+      productionTotals.map((item) => [item.productId, Number(item.total)]),
+    );
 
-      const totalSold = Number(salesResult[0]?.total || 0);
+    const salesMap = new Map(
+      salesTotals.map((item) => [item.productId, Number(item.total)]),
+    );
 
-      // Get stock adjustments
-      const adjustmentsResult = await db
-        .select({
-          total: sql<number>`COALESCE(SUM(${stockAdjustments.quantity}), 0)`,
-        })
-        .from(stockAdjustments)
-        .where(eq(stockAdjustments.productId, product.id));
+    const adjustmentMap = new Map(
+      adjustmentTotals.map((item) => [item.productId, Number(item.total)]),
+    );
 
-      const adjustments = Number(adjustmentsResult[0]?.total || 0);
+    return productsData.map((product) => {
+      const totalProduced = productionMap.get(product.id) || 0;
+      const totalSold = salesMap.get(product.id) || 0;
+      const adjustments = adjustmentMap.get(product.id) || 0;
 
-      const currentStock = totalProduced - totalSold + adjustments;
-
-      inventory.push({
+      return {
         ...product,
-        currentStock,
         totalProduced,
         totalSold,
         adjustments,
-      });
-    }
-
-    return inventory;
+        currentStock: totalProduced - totalSold + adjustments,
+      };
+    });
   }
 
   async getDashboardMetrics(): Promise<{
@@ -560,22 +574,22 @@ export class DatabaseStorage implements IStorage {
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
     startOfWeek.setHours(0, 0, 0, 0);
-    
+
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6); // End of current week (Saturday)
     endOfWeek.setHours(23, 59, 59, 999);
-    
+
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfWeek.getDate() - 7);
-    
+
     const endOfLastWeek = new Date(endOfWeek);
     endOfLastWeek.setDate(endOfWeek.getDate() - 7);
-    
+
     const thisWeekStart = startOfWeek.toISOString().split("T")[0];
     const thisWeekEnd = endOfWeek.toISOString().split("T")[0];
     const lastWeekStart = startOfLastWeek.toISOString().split("T")[0];
     const lastWeekEnd = endOfLastWeek.toISOString().split("T")[0];
-    
+
     const thisMonth = new Date().toISOString().slice(0, 7);
 
     // Weekly production (current week)
@@ -585,8 +599,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           gte(production.date, thisWeekStart),
-          lte(production.date, thisWeekEnd)
-        )
+          lte(production.date, thisWeekEnd),
+        ),
       );
 
     const todayProduction = Number(weeklyProductionResult[0]?.total || 0);
@@ -598,13 +612,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           gte(production.date, lastWeekStart),
-          lte(production.date, lastWeekEnd)
-        )
+          lte(production.date, lastWeekEnd),
+        ),
       );
 
-    const yesterdayProduction = Number(
-      lastWeekProductionResult[0]?.total || 0
-    );
+    const yesterdayProduction = Number(lastWeekProductionResult[0]?.total || 0);
 
     // Pending orders
     const pendingOrdersResult = await db
@@ -632,8 +644,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(salesOrders.status, "pending"),
-          sql`${salesOrders.date} <= ${sevenDaysAgo}`
-        )
+          sql`${salesOrders.date} <= ${sevenDaysAgo}`,
+        ),
       );
 
     const urgentOrders = Number(urgentOrdersResult[0]?.count || 0);
@@ -641,7 +653,7 @@ export class DatabaseStorage implements IStorage {
     // Low stock items (less than 50 pieces)
     const inventory = await this.getInventory();
     const lowStockItems = inventory.filter(
-      (item) => item.currentStock < 50
+      (item) => item.currentStock < 50,
     ).length;
 
     // Monthly expenses (material costs from production)

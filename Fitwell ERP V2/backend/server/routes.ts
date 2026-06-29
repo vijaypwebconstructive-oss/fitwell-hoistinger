@@ -197,13 +197,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const productData = {
             name: String(row["Product Name"] || row["name"] || ""),
             weightGrams: String(
-              row["Weight (grams)"] || row["weightGrams"] || "0"
+              row["Weight (grams)"] || row["weightGrams"] || "0",
             ),
             rawMaterialType: String(
-              row["Material Type"] || row["rawMaterialType"] || "Steel"
+              row["Material Type"] || row["rawMaterialType"] || "Steel",
             ),
             rawMaterialPricePerKg: String(
-              row["Material Price/KG"] || row["rawMaterialPricePerKg"] || "0"
+              row["Material Price/KG"] || row["rawMaterialPricePerKg"] || "0",
             ),
           };
 
@@ -262,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             address: String(row["Address"] || row["address"] || ""),
             pinCode: String(row["Pin Code"] || row["pinCode"] || ""),
             phoneNumber: String(
-              row["Phone Number"] || row["phoneNumber"] || ""
+              row["Phone Number"] || row["phoneNumber"] || "",
             ),
             gstNumber: row["GST Number"] || row["gstNumber"] || null,
           };
@@ -328,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertProductionSchema.partial().parse(req.body);
       const production = await storage.updateProductionRecord(
         id,
-        validatedData
+        validatedData,
       );
       res.json(production);
     } catch (error) {
@@ -384,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const salesOrder = await storage.createSalesOrder(
         validatedOrder,
-        validatedItems
+        validatedItems,
       );
       res.status(201).json(salesOrder);
     } catch (error) {
@@ -466,6 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // } catch (error) {
     //   res.status(500).json({ message: "Failed to fetch inventory" });
     // }
+    console.time("Inventory API");
 
     const data = await storage.getInventory();
     res.json(data);

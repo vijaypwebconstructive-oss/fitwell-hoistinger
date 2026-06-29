@@ -56,28 +56,30 @@ export default function Inventory() {
   const { data: products } = useQuery({
     queryKey: ["/api/products"],
     queryFn: api.getProducts,
+    enabled: isDialogOpen,
   });
 
   const createAdjustmentMutation = useMutation({
     mutationFn: api.createStockAdjustment,
-    onSuccess: async () => {
-      // Invalidate and refetch inventory query
-      await queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stock-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/inventory"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["/api/stock-adjustments"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["/api/dashboard/metrics"],
+      });
+
       form.reset();
       setIsDialogOpen(false);
+
       toast({
         title: "Success",
         description: "Stock adjustment created successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to create stock adjustment",
-        variant: "destructive",
       });
     },
   });
@@ -117,7 +119,21 @@ export default function Inventory() {
                 tracking
               </p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+
+                if (!open) {
+                  form.reset({
+                    productId: 0,
+                    quantity: undefined,
+                    reason: "",
+                    date: new Date().toISOString().split("T")[0],
+                  });
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button
                   data-testid="button-stock-adjustment"
@@ -136,8 +152,7 @@ export default function Inventory() {
                     onSubmit={form.handleSubmit(handleCreateAdjustment)}
                     className="space-y-4"
                   >
-
-<FormField
+                    <FormField
                       control={form.control}
                       name="date"
                       render={({ field }) => (
@@ -206,17 +221,16 @@ export default function Inventory() {
                               data-testid="input-quantity"
                             /> */}
                             <Input
-  type="text"
-  placeholder="e.g., +50 or -25"
-  {...field}
-  onChange={(e) => {
-    const val = e.target.value;
-    const parsed = parseInt(val);
-    field.onChange(isNaN(parsed) ? val : parsed);
-  }}
-  data-testid="input-quantity"
-/>
-
+                              type="text"
+                              placeholder="e.g., +50 or -25"
+                              {...field}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const parsed = parseInt(val);
+                                field.onChange(isNaN(parsed) ? val : parsed);
+                              }}
+                              data-testid="input-quantity"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -240,8 +254,6 @@ export default function Inventory() {
                         </FormItem>
                       )}
                     />
-
-                   
 
                     <div className="flex space-x-3 pt-4">
                       <Button
